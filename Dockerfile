@@ -43,6 +43,9 @@ RUN apt-get update
 RUN apt-get -y upgrade
 RUN apt-get install -y git build-essential autoconf automake libtool make gcc g++ && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update
+RUN apt-get install -y libpq-dev
+
 RUN git clone git://github.com/rbenv/rbenv.git /usr/local/rbenv \
 &&  git clone git://github.com/rbenv/ruby-build.git /usr/local/rbenv/plugins/ruby-build \
 &&  git clone git://github.com/jf/rbenv-gemset.git /usr/local/rbenv/plugins/rbenv-gemset \
