@@ -68,3 +68,5 @@ RUN eval "$(rbenv init -)"; rbenv install 2.4.2 \
 &&  eval "$(rbenv init -)"; rbenv global 2.4.2 \
 &&  eval "$(rbenv init -)"; gem update --system \
 &&  eval "$(rbenv init -)"; gem install bundler
+
+RUN apt-get install -y cppcheck
