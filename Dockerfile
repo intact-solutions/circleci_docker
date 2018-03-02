@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ataber/circleci_ruby_base
 
 RUN apt-get update \
 &&  apt-get upgrade -y --force-yes \
@@ -11,62 +11,64 @@ RUN apt-get update \
     curl \
     git \
     build-essential \
+    autoconf \
+    automake \
+    libtool \
+    make \
+    gcc \
+    g++ \
+    libpq-dev \
     vim \
     dtach \
-    imagemagick \
-    libmagick++-dev \
-    libqtwebkit-dev \
-    libffi-dev \
-    mysql-client \
-    libmysqlclient-dev \
     libxslt1-dev \
     redis-tools \
     xvfb \
-    python \
     tzdata \
 &&  apt-get clean \
 &&  rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+RUN gem install bundler
 
 # node.js LTS install
 RUN curl --silent --location https://deb.nodesource.com/setup_6.x | bash - \
     && apt-get install -y nodejs \
     && npm -g up
 
-# yarn install
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash
-
-# pip install
-RUN wget https://bootstrap.pypa.io/get-pip.py \
-&&  python get-pip.py
-
-RUN apt-get update
-RUN apt-get -y upgrade
-RUN apt-get install -y git build-essential autoconf automake libtool make gcc g++ && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update
-RUN apt-get install -y libpq-dev
-
-RUN git clone git://github.com/rbenv/rbenv.git /usr/local/rbenv \
-&&  git clone git://github.com/rbenv/ruby-build.git /usr/local/rbenv/plugins/ruby-build \
-&&  git clone git://github.com/jf/rbenv-gemset.git /usr/local/rbenv/plugins/rbenv-gemset \
-&&  /usr/local/rbenv/plugins/ruby-build/install.sh
-ENV PATH /usr/local/rbenv/bin:$PATH
-ENV RBENV_ROOT /usr/local/rbenv
-
-RUN echo 'export RBENV_ROOT=/usr/local/rbenv' >> /etc/profile.d/rbenv.sh \
-&&  echo 'export PATH=/usr/local/rbenv/bin:$PATH' >> /etc/profile.d/rbenv.sh \
-&&  echo 'eval "$(rbenv init -)"' >> /etc/profile.d/rbenv.sh
-
-RUN echo 'export RBENV_ROOT=/usr/local/rbenv' >> /root/.bashrc \
-&&  echo 'export PATH=/usr/local/rbenv/bin:$PATH' >> /root/.bashrc \
-&&  echo 'eval "$(rbenv init -)"' >> /root/.bashrc
-
-ENV CONFIGURE_OPTS --disable-install-doc
-ENV PATH /usr/local/rbenv/bin:/usr/local/rbenv/shims:$PATH
-
-RUN eval "$(rbenv init -)"; rbenv install 2.4.2 \
-&&  eval "$(rbenv init -)"; rbenv global 2.4.2 \
-&&  eval "$(rbenv init -)"; gem update --system \
-&&  eval "$(rbenv init -)"; gem install bundler
-
-RUN apt-get install -y cppcheck
+# Emscripten install
+ENV EMCC_SDK_VERSION 1.37.35
+ENV EMCC_SDK_ARCH 32
+ENV EMCC_BINARYEN_VERSION 1.37.35
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates build-essential curl git-core cmake default-jdk python \
+    && curl -sL https://deb.nodesource.com/setup_4.x | bash - \
+    && apt-get install -y nodejs \
+    && curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz > emsdk-portable.tar.gz \
+    && tar xzf emsdk-portable.tar.gz \
+    && rm emsdk-portable.tar.gz \
+    && cd emsdk-portable \
+    && ./emsdk update \
+    && ./emsdk install --build=MinSizeRel sdk-tag-$EMCC_SDK_VERSION-${EMCC_SDK_ARCH}bit \
+    && mkdir -p /clang \
+    && cp -r /emsdk-portable/clang/tag-e$EMCC_SDK_VERSION/build_tag-e${EMCC_SDK_VERSION}_${EMCC_SDK_ARCH}/bin /clang \
+    && mkdir -p /clang/src \
+    && cp /emsdk-portable/clang/tag-e$EMCC_SDK_VERSION/src/emscripten-version.txt /clang/src/ \
+    && mkdir -p /emscripten \
+    && cp -r /emsdk-portable/emscripten/tag-$EMCC_SDK_VERSION/* /emscripten \
+    && cp -r /emsdk-portable/emscripten/tag-${EMCC_SDK_VERSION}_${EMCC_SDK_ARCH}bit_optimizer/optimizer /emscripten/ \
+    && echo "import os\nLLVM_ROOT='/clang/bin/'\nNODE_JS='nodejs'\nEMSCRIPTEN_ROOT='/emscripten'\nEMSCRIPTEN_NATIVE_OPTIMIZER='/emscripten/optimizer'\nSPIDERMONKEY_ENGINE = ''\nV8_ENGINE = ''\nTEMP_DIR = '/tmp'\nCOMPILER_ENGINE = NODE_JS\nJS_ENGINES = [NODE_JS]\n" > ~/.emscripten \
+    && rm -rf /emsdk-portable \
+    && rm -rf /emscripten/tests \
+    && rm -rf /emscripten/site \
+    && for prog in em++ em-config emar emcc emconfigure emmake emranlib emrun emscons; do \
+           ln -sf /emscripten/$prog /usr/local/bin; done \
+    && apt-get -y --purge remove curl git-core build-essential gcc ca-certificates \
+    && apt-get -y clean \
+    && apt-get -y autoclean \
+    && apt-get -y autoremove \
+    && echo "Installed ... testing"
+RUN emcc --version \
+    && mkdir -p /tmp/emscripten_test && cd /tmp/emscripten_test \
+    && printf '#include <iostream>\nint main(){std::cout<<"HELLO"<<std::endl;return 0;}' > test.cpp \
+    && em++ -O2 test.cpp -o test.js && nodejs test.js \
+    && em++ test.cpp -o test.js && nodejs test.js \
+    && cd / \
+    && rm -rf /tmp/emscripten_test \
