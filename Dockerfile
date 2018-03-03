@@ -2,7 +2,7 @@ FROM ataber/circleci_ruby_base
 
 RUN apt-get update \
 &&  apt-get upgrade -y --force-yes \
-&&  apt-get install -y --force-yes \
+&&  apt-get install -y --force-yes --fix-missing \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
@@ -29,18 +29,14 @@ RUN apt-get update \
 
 RUN gem install bundler
 
-# node.js LTS install
-RUN curl --silent --location https://deb.nodesource.com/setup_6.x | bash - \
-    && apt-get install -y nodejs \
-    && npm -g up
-
 # Emscripten install
 ENV EMCC_SDK_VERSION 1.37.35
 ENV EMCC_SDK_ARCH 32
 ENV EMCC_BINARYEN_VERSION 1.37.35
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates build-essential curl git-core cmake default-jdk python \
-    && curl -sL https://deb.nodesource.com/setup_4.x | bash - \
+    && curl -sL https://deb.nodesource.com/setup_9.x | bash - \
     && apt-get install -y nodejs \
+    && npm -g up \
     && curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz > emsdk-portable.tar.gz \
     && tar xzf emsdk-portable.tar.gz \
     && rm emsdk-portable.tar.gz \
@@ -65,10 +61,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && apt-get -y autoclean \
     && apt-get -y autoremove \
     && echo "Installed ... testing"
-RUN emcc --version \
-    && mkdir -p /tmp/emscripten_test && cd /tmp/emscripten_test \
-    && printf '#include <iostream>\nint main(){std::cout<<"HELLO"<<std::endl;return 0;}' > test.cpp \
-    && em++ -O2 test.cpp -o test.js && nodejs test.js \
-    && em++ test.cpp -o test.js && nodejs test.js \
-    && cd / \
-    && rm -rf /tmp/emscripten_test \
+
+RUN apt-get install -y curl ca-certificates
+RUN curl -sL https://deb.nodesource.com/setup_9.x | bash \
+    && apt-get install -y nodejs
+
+RUN apt-get update --fix-missing && \
+    apt-get -y upgrade && \
+    apt-get install -y git cmake build-essential autoconf automake libtool make gcc g++ && rm -rf /var/lib/apt/lists/*
