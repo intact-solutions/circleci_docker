@@ -21,7 +21,6 @@ RUN mkdir -p /usr/local/etc \
 
 ENV RUBY_MAJOR 2.5
 ENV RUBY_VERSION 2.5.1
-ENV RUBY_DOWNLOAD_SHA256 23677d40bf3b7621ba64593c978df40b1e026d8653c74a0599f0ead78ed92b51
 ENV RUBYGEMS_VERSION 2.7.6
 ENV BUNDLER_VERSION 1.16.1
 
@@ -51,8 +50,6 @@ RUN set -ex \
 	&& rm -rf /var/lib/apt/lists/* \
 	\
 	&& wget -O ruby.tar.xz "https://cache.ruby-lang.org/pub/ruby/${RUBY_MAJOR%-rc}/ruby-$RUBY_VERSION.tar.xz" \
-	&& echo "$RUBY_DOWNLOAD_SHA256 *ruby.tar.xz" | sha256sum -c - \
-	\
 	&& mkdir -p /usr/src/ruby \
 	&& tar -xJf ruby.tar.xz -C /usr/src/ruby --strip-components=1 \
 	&& rm ruby.tar.xz \
