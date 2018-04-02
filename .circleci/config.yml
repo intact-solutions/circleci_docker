@@ -9,23 +9,23 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker:
-        reusable: true
-        exclusive: true
+          reusable: true
+          exclusive: true
 
       - run:
-        name: Install bash
-        command: apk add --no-cache bash
+          name: Install bash
+          command: apk add --no-cache bash
 
       - run:
-        name: Build base image
-        command: docker build -t ataber/circleci_ruby_base ubuntu_ruby_base
+          name: Build base image
+          command: docker build -t ataber/circleci_ruby_base ubuntu_ruby_base
 
       - run:
-        name: Build image
-        command: docker build -t ataber/circleci .
+          name: Build image
+          command: docker build -t ataber/circleci .
 
       - deploy:
-        name: Deploy image to Docker Hub
-        command: |
-          docker login --username ${DOCKER_USER} --password ${DOCKER_PASSWORD}
-          docker push ataber/circleci
+          name: Deploy image to Docker Hub
+          command: |
+            docker login --username ${DOCKER_USER} --password ${DOCKER_PASSWORD}
+            docker push ataber/circleci
