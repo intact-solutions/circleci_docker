@@ -24,6 +24,9 @@ RUN apt-get update \
     redis-tools \
     xvfb \
     tzdata \
+    ca-certificates \
+    cmake \
+    python \
 &&  apt-get clean \
 &&  rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
@@ -33,8 +36,7 @@ RUN gem install bundler
 ENV EMCC_SDK_VERSION 1.37.35
 ENV EMCC_SDK_ARCH 32
 ENV EMCC_BINARYEN_VERSION 1.37.35
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates build-essential curl git-core cmake default-jdk python \
-    && curl -sL https://deb.nodesource.com/setup_9.x | bash - \
+RUN curl -sL https://deb.nodesource.com/setup_9.x | bash - \
     && apt-get install -y nodejs \
     && npm -g up \
     && curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz > emsdk-portable.tar.gz \
@@ -55,17 +57,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && rm -rf /emscripten/tests \
     && rm -rf /emscripten/site \
     && for prog in em++ em-config emar emcc emconfigure emmake emranlib emrun emscons; do \
-           ln -sf /emscripten/$prog /usr/local/bin; done \
-    && apt-get -y --purge remove curl git-core build-essential gcc ca-certificates \
-    && apt-get -y clean \
-    && apt-get -y autoclean \
-    && apt-get -y autoremove \
-    && echo "Installed ... testing"
-
-RUN apt-get install -y curl ca-certificates
-RUN curl -sL https://deb.nodesource.com/setup_9.x | bash \
-    && apt-get install -y nodejs
-
-RUN apt-get update --fix-missing && \
-    apt-get -y upgrade && \
-    apt-get install -y git cmake build-essential autoconf automake libtool make gcc g++ && rm -rf /var/lib/apt/lists/*
+           ln -sf /emscripten/$prog /usr/local/bin; done
