@@ -4,7 +4,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bzip2 \
         ca-certificates \
-        build-essential \
         libffi-dev \
         libgdbm3 \
         libssl-dev \
@@ -106,6 +105,9 @@ RUN set -ex \
     && gem update --system "$RUBYGEMS_VERSION" \
     && gem install bundler --version "$BUNDLER_VERSION" --force \
     && rm -r /root/.gem/
+
+# for native extensions
+RUN apt-get update && apt-get install -y build-essential
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps
