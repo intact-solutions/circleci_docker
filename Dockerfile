@@ -8,6 +8,8 @@ RUN apt-get update \
         libgdbm3 \
         libssl-dev \
         libyaml-dev \
+        libpq-dev \
+        redis-tools \
         procps \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
