@@ -1,60 +1,101 @@
-FROM ataber/circleci_ruby_base
+FROM ataber/emscripten
 
 RUN apt-get update \
-&&  apt-get upgrade -y --force-yes \
-&&  apt-get install -y --force-yes --fix-missing \
-    libssl-dev \
-    libreadline-dev \
-    zlib1g-dev \
-    language-pack-ja \
-    wget \
-    curl \
-    git \
-    build-essential \
-    autoconf \
-    automake \
-    libtool \
-    make \
-    gcc \
-    g++ \
-    libpq-dev \
-    vim \
-    dtach \
-    libxslt1-dev \
-    redis-tools \
-    xvfb \
-    tzdata \
-    ca-certificates \
-    cmake \
-    python \
-&&  apt-get clean \
-&&  rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends \
+        bzip2 \
+        ca-certificates \
+        libffi-dev \
+        libgdbm3 \
+        libssl-dev \
+        libyaml-dev \
+        libpq-dev \
+        redis-tools \
+        procps \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# skip installing gem documentation
+RUN mkdir -p /usr/local/etc \
+    && { \
+        echo 'install: --no-document'; \
+        echo 'update: --no-document'; \
+    } >> /usr/local/etc/gemrc
+
+ENV RUBY_MAJOR 2.5
+ENV RUBY_VERSION 2.5.1
+ENV RUBYGEMS_VERSION 2.7.6
+ENV BUNDLER_VERSION 1.16.1
+
+# some of ruby's build scripts are written in ruby
+#   we purge system ruby later to make sure our final image uses what we just built
+RUN set -ex \
+    \
+    && buildDeps=' \
+        autoconf \
+        bison \
+        dpkg-dev \
+        gcc \
+        libbz2-dev \
+        libgdbm-dev \
+        libglib2.0-dev \
+        libncurses-dev \
+        libreadline-dev \
+        libxml2-dev \
+        libxslt-dev \
+        make \
+        ruby \
+        wget \
+        xz-utils \
+    ' \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends $buildDeps \
+    && rm -rf /var/lib/apt/lists/* \
+    \
+    && wget -O ruby.tar.xz "https://cache.ruby-lang.org/pub/ruby/${RUBY_MAJOR%-rc}/ruby-$RUBY_VERSION.tar.xz" \
+    && mkdir -p /usr/src/ruby \
+    && tar -xJf ruby.tar.xz -C /usr/src/ruby --strip-components=1 \
+    && rm ruby.tar.xz \
+    \
+    && cd /usr/src/ruby \
+    \
+# hack in "ENABLE_PATH_CHECK" disabling to suppress:
+#   warning: Insecure world writable dir
+    && { \
+        echo '#define ENABLE_PATH_CHECK 0'; \
+        echo; \
+        cat file.c; \
+    } > file.c.new \
+    && mv file.c.new file.c \
+    \
+    && autoconf \
+    && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
+    && ./configure \
+        --build="$gnuArch" \
+        --disable-install-doc \
+        --enable-shared \
+    && make -j "$(nproc)" \
+    && make install \
+    \
+    && dpkg-query --show --showformat '${package}\n' \
+        | grep -P '^libreadline\d+$' \
+        | xargs apt-mark manual \
+    && apt-get purge -y --auto-remove $buildDeps \
+    && cd / \
+    && rm -r /usr/src/ruby \
+    \
+    && gem update --system "$RUBYGEMS_VERSION" \
+    && gem install bundler --version "$BUNDLER_VERSION" --force \
+    && rm -r /root/.gem/
+
+# install things globally, for great justice
+# and don't create ".bundle" in all our apps
+ENV GEM_HOME /usr/local/bundle
+ENV BUNDLE_PATH="$GEM_HOME" \
+    BUNDLE_BIN="$GEM_HOME/bin" \
+    BUNDLE_SILENCE_ROOT_WARNING=1 \
+    BUNDLE_APP_CONFIG="$GEM_HOME"
+ENV PATH $BUNDLE_BIN:$PATH
+RUN mkdir -p "$GEM_HOME" "$BUNDLE_BIN" \
+    && chmod 777 "$GEM_HOME" "$BUNDLE_BIN"
 
 RUN gem install bundler
-
-# Emscripten install
-ENV EMCC_SDK_VERSION 1.37.35
-ENV EMCC_SDK_ARCH 32
-ENV EMCC_BINARYEN_VERSION 1.37.35
-RUN curl -sL https://deb.nodesource.com/setup_9.x | bash - \
-    && apt-get install -y nodejs \
-    && npm -g up \
-    && curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz > emsdk-portable.tar.gz \
-    && tar xzf emsdk-portable.tar.gz \
-    && rm emsdk-portable.tar.gz \
-    && cd emsdk-portable \
-    && ./emsdk update \
-    && ./emsdk install --build=MinSizeRel sdk-tag-$EMCC_SDK_VERSION-${EMCC_SDK_ARCH}bit \
-    && mkdir -p /clang \
-    && cp -r /emsdk-portable/clang/tag-e$EMCC_SDK_VERSION/build_tag-e${EMCC_SDK_VERSION}_${EMCC_SDK_ARCH}/bin /clang \
-    && mkdir -p /clang/src \
-    && cp /emsdk-portable/clang/tag-e$EMCC_SDK_VERSION/src/emscripten-version.txt /clang/src/ \
-    && mkdir -p /emscripten \
-    && cp -r /emsdk-portable/emscripten/tag-$EMCC_SDK_VERSION/* /emscripten \
-    && cp -r /emsdk-portable/emscripten/tag-${EMCC_SDK_VERSION}_${EMCC_SDK_ARCH}bit_optimizer/optimizer /emscripten/ \
-    && echo "import os\nLLVM_ROOT='/clang/bin/'\nNODE_JS='nodejs'\nEMSCRIPTEN_ROOT='/emscripten'\nEMSCRIPTEN_NATIVE_OPTIMIZER='/emscripten/optimizer'\nSPIDERMONKEY_ENGINE = ''\nV8_ENGINE = ''\nTEMP_DIR = '/tmp'\nCOMPILER_ENGINE = NODE_JS\nJS_ENGINES = [NODE_JS]\n" > ~/.emscripten \
-    && rm -rf /emsdk-portable \
-    && rm -rf /emscripten/tests \
-    && rm -rf /emscripten/site \
-    && for prog in em++ em-config emar emcc emconfigure emmake emranlib emrun emscons; do \
-           ln -sf /emscripten/$prog /usr/local/bin; done
