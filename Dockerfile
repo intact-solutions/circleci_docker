@@ -10,6 +10,8 @@ RUN apt-get update \
         libyaml-dev \
         libpq-dev \
         redis-tools \
+        libxml2-dev \
+        libcurl4-gnutls-dev \
         procps \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
