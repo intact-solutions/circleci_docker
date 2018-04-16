@@ -10,7 +10,6 @@ RUN apt-get update \
         libyaml-dev \
         libpq-dev \
         redis-tools \
-        libxml2-dev \
         libcurl4-gnutls-dev \
         procps \
         zlib1g-dev \
@@ -48,7 +47,6 @@ ENV RUBYGEMS_VERSION 2.7.6
 ENV BUNDLER_VERSION 1.16.1
 
 # some of ruby's build scripts are written in ruby
-#   we purge system ruby later to make sure our final image uses what we just built
 RUN set -ex \
     \
     && buildDeps=' \
@@ -100,7 +98,6 @@ RUN set -ex \
     && dpkg-query --show --showformat '${package}\n' \
         | grep -P '^libreadline\d+$' \
         | xargs apt-mark manual \
-    && apt-get purge -y --auto-remove $buildDeps \
     && cd / \
     && rm -r /usr/src/ruby \
     \
