@@ -5,10 +5,10 @@ RUN apt-get update \
         bzip2 \
         ca-certificates \
         libffi-dev \
-        libgdbm3 \
         libssl-dev \
         libyaml-dev \
         libpq-dev \
+        libgdbm5-dev \
         redis-tools \
         libcurl4-gnutls-dev \
         procps \
