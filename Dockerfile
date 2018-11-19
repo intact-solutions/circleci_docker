@@ -1,4 +1,4 @@
-FROM ataber/emscripten
+FROM ataber/mkl_vtk
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
