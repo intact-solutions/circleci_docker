@@ -8,7 +8,7 @@ RUN apt-get update \
         libssl-dev \
         libyaml-dev \
         libpq-dev \
-        libgdbm5-dev \
+        libgdbm-dev \
         redis-tools \
         libcurl4-gnutls-dev \
         procps \
